@@ -21,7 +21,7 @@ max_to_keep = 200
 batch_size=64
 number_inputs=42
 number_outputs=8
-num_iterations = 15001
+num_iterations = 5001
 learning_rate = 0.001
 clip_norm = 1
 

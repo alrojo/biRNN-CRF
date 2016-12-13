@@ -21,7 +21,7 @@ max_to_keep = 200
 batch_size=64
 number_inputs=42
 number_outputs=8
-num_iterations = 15001
+num_iterations = 5001
 learning_rate = 0.001
 clip_norm = 1
 
@@ -41,7 +41,7 @@ def model(crf_on):
         t_input = tf.placeholder(tf.int32, shape=[None, None], name='t_input')
         t_input_hot = tf.one_hot(t_input, number_outputs)
         t_mask = tf.placeholder(tf.float32, shape=[None, None], name='t_mask')
-        is_training_pl = tf.placeholder(tf.bool)
+        is_training_pl = tf.placeholder(tf.bool, name='is_training')
         # model
         l1 = fully_connected(X_input, num_units_l1)
         l1 = tf.concat(2, [X_input, l1])

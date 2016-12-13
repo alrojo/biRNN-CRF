@@ -21,7 +21,7 @@ max_to_keep = 200
 batch_size=64
 number_inputs=42
 number_outputs=8
-num_iterations = 15001
+num_iterations = 5001
 learning_rate = 0.001
 clip_norm = 1
 
@@ -43,7 +43,9 @@ def model(crf_on):
         t_mask = tf.placeholder(tf.float32, shape=[None, None], name='t_mask')
         is_training_pl = tf.placeholder(tf.bool)
         # model
-        l1 = fully_connected(X_input, num_units_l1, normalizer_fn=batch_norm,normalizer_params={'is_training': is_training_pl})
+        l1 = fully_connected(X_input, num_units_l1, activation_fn=None)
+        l1 = batch_norm(l1)
+        l1 = relu(l1)
         l1 = tf.concat(2, [X_input, l1])
         cell_fw = tf.nn.rnn_cell.GRUCell(num_units_encoder)
         cell_bw = tf.nn.rnn_cell.GRUCell(num_units_encoder)
