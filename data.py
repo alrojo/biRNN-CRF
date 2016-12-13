@@ -176,6 +176,13 @@ class gen_data():
         batch_holder["length"] = np.zeros((self._batch_size,), dtype="int32")
         return batch_holder
 
+    def _chop_batch(self, batch):
+        X, t, mask = utils.chop_sequences(batch['X'], batch['t'], batch['mask'], batch['length'])
+        batch['X'] = X
+        batch['t'] = t
+        batch['mask'] = mask
+        return batch
+
     def gen_valid(self):
         batch = self._batch_init()
         i = 0
@@ -186,7 +193,7 @@ class gen_data():
             batch['length'][i] = self._data_dict['length_valid'][idx]
             i += 1
             if i >= self._batch_size:
-                yield batch, i
+                yield self._chop_batch(batch), i
                 batch = self._batch_init()
                 i = 0
         if i != 0:
@@ -202,7 +209,7 @@ class gen_data():
             batch['length'][i] = self._data_dict['length_test'][idx]
             i += 1
             if i >= self._batch_size:
-                yield batch, i
+                yield self._chop_batch(batch), i
                 batch = self._batch_init()
                 i = 0
         if i != 0:
@@ -222,7 +229,7 @@ class gen_data():
                 batch['length'][i] = self._data_dict['length_train'][idx]
                 i += 1
                 if i >= self._batch_size:
-                    yield batch
+                    yield self._chop_batch(batch)
                     batch = self._batch_init()
                     i = 0
                     iteration += 1

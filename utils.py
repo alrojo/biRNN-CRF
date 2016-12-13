@@ -117,3 +117,8 @@ def log_loss_std(y, t, eps=1e-15):
     """
     losses = log_losses(y, t, eps)
     return np.std(losses)
+
+
+def chop_sequences(X, t, mask, length):
+    max_len = np.max(length)
+    return X[:, :max_len], t[:, :max_len], mask[:, :max_len]

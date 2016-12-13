@@ -15,18 +15,21 @@ import custom_ops
 import conditional_random_fields as crf
 
 tb_log_freq = 50
-save_freq = 500
-valid_every = 500
+save_freq = 50
+valid_every = 50
 max_to_keep = 200
 batch_size=64
 number_inputs=42
 number_outputs=8
-num_iterations = 1000001
+num_iterations = 15001
 learning_rate = 0.001
 clip_norm = 1
 
+num_units_encoder = 400
+num_units_l1 = 200
+num_units_l2 = 200
 
-data_gen = lambda split: data.gen_data(num_iterations=num_iterations, batch_size=batch_size)
+data_gen = data.gen_data(num_iterations=num_iterations, batch_size=batch_size)
 
 def model():
     print("building model ...")
@@ -47,15 +50,17 @@ def model():
         enc_outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell_fw=cell_fw, cell_bw=cell_bw, inputs=l1,
                                                          sequence_length=X_length, dtype=tf.float32)
         enc_outputs = tf.concat(2, enc_outputs)
-        outputs = tf.reshape(enc_outputs, [-1, num_units_encoder*2])
-        l2 = fully_connected(outputs, num_units_l2)
-        l_f = fully_connected(l2, number_outputs, activation_fn=None)
-        l_g = fully_connected(l2, number_outputs**2, activation_fn=None)
-        batch_size_shp = tf.shape(enc_outputs)[0]
-        seq_len_shp = tf.shape(enc_outputs)[1]
-        l_g = tf.reshape(l_f, [batch_size_shp, seq_len_shp, number_outputs, number_outputs)
-        f = l_f
-        g = tf.slice(l_g, [0, 0, 0, 0], [-1, seq_len_shp-1, -1, -1])
+        with tf.variable_scope('l2'):
+            l2 = fully_connected(enc_outputs, num_units_l2)
+        with tf.variable_scope('f'):
+            l_f = fully_connected(l2, number_outputs, activation_fn=None)
+            f = l_f
+        with tf.variable_scope('g'):
+            l_g = fully_connected(l2, number_outputs**2, activation_fn=None)
+            batch_size_shp = tf.shape(enc_outputs)[0]
+            seq_len_shp = tf.shape(enc_outputs)[1]
+            l_g = tf.reshape(l_g, [batch_size_shp, seq_len_shp, number_outputs, number_outputs])
+            g = tf.slice(l_g, [0, 0, 0, 0], [-1, seq_len_shp-1, -1, -1])
         nu_alp = crf.forward_pass(f, g, X_length)
         nu_bet = crf.backward_pass(f, g, X_length)
         prediction = crf.log_marginal(nu_alp, nu_bet)
@@ -63,17 +68,14 @@ def model():
 
     with tf.variable_scope('metrics'):
         print("building metrics ...")
-        loss = -crf.log_likelihood(t_input_hot, f, g, nu_alp, nu_bet, X_length)
+        sum_mask = tf.reduce_sum(t_mask, axis=1)
+        mean_mask = tf.reduce_mean(sum_mask)
+        loss = -crf.log_likelihood(t_input_hot, f, g, nu_alp, nu_bet, X_length) / mean_mask
         argmax = tf.to_int32(tf.argmax(prediction, 2))
         correct = tf.to_float(tf.equal(argmax, t_input)) * t_mask
         accuracy = tf.reduce_sum(correct) / tf.reduce_sum(t_mask)
-        global_step = tf.Variable(0, name='global_step', trainable=False)
-        optimizer = tf.train.AdamOptimizer(learning_rate)
-        grads_and_vars = optimizer.compute_gradients(loss)
-        gradients, variables = zip(*grads_and_vars)
-        clipped_gradients, global_norm = tf.clip_by_global_norm(gradients, self.clip_norm)
-        grads_and_vars = zip(clipped_gradients, variables)
-        train_op = optimizer.apply_gradients(grads_and_vars, global_step=global_step)
+        tf.summary.scalar('train/loss', loss)
+        tf.summary.scalar('train/accuracy', accuracy)
 
     with tf.variable_scope('optimizer'):
         print("building optimizer ...")
@@ -81,7 +83,7 @@ def model():
         optimizer = tf.train.AdamOptimizer(learning_rate)
         grads_and_vars = optimizer.compute_gradients(loss)
         gradients, variables = zip(*grads_and_vars)
-        clipped_gradients, global_norm = tf.clip_by_global_norm(gradients, self.clip_norm)
+        clipped_gradients, global_norm = tf.clip_by_global_norm(gradients, clip_norm)
         grads_and_vars = zip(clipped_gradients, variables)
         tf.summary.scalar('train/global_gradient_norm', global_norm)
         train_op = optimizer.apply_gradients(grads_and_vars, global_step=global_step)

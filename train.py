@@ -54,7 +54,7 @@ if config.save_freq:
 else:
     print("WARNING: Not saving checkpoints!")
 
-data_gen = config.data_gen()
+data_gen = config.data_gen
 train_losses = []
 train_accs = []
 
@@ -75,7 +75,7 @@ with tf.Session() as sess:
     combined_time = 0.0
     for idx, batch in enumerate(data_gen.gen_train()):
         train_fetches = [train_op, loss, accuracy, summaries] # which ops to run
-        train_feed_dict = {X_input: batch['X'], t_input: batch['t'], X_length: batch['length'], t_mask: batch['mask'] is_training_pl: True} # data input point in the graph
+        train_feed_dict = {X_input: batch['X'], t_input: batch['t'], X_length: batch['length'], t_mask: batch['mask'], is_training_pl: True} # data input point in the graph
         start_time = time.time()
         res = tuple(sess.run(fetches=train_fetches, feed_dict=train_feed_dict))
         elapsed = time.time() - start_time
@@ -98,11 +98,17 @@ with tf.Session() as sess:
                 sum = 0
                 for batch, i in gen():
                     valid_fetches = [prediction]
-                    valid_feed_dict = {X_input: batch['X'], t_input: batch['t'], X_length: batch['length'], t_mask: batch['mask'] is_training_pl: False}
+                    valid_feed_dict = {X_input: batch['X'], t_input: batch['t'], X_length: batch['length'], t_mask: batch['mask'], is_training_pl: False}
                     valid_out = sess.run(fetches=valid_fetches, feed_dict=valid_feed_dict)[0]
-                    valid_masks.append(batch['mask'])
-                    valid_targets.append(batch['t'])
-                    valid_outs.append(valid_out)
+                    h_out = np.zeros((i, 700, 8), dtype="float32")
+                    h_out[:, :valid_out.shape[1], :] = valid_out
+                    h_mask = np.zeros((i, 700), dtype="float32")
+                    h_mask[:, :valid_out.shape[1]] = batch['mask']
+                    h_targets = np.zeros((i, 700), dtype="int32")
+                    h_targets[:, :valid_out.shape[1]] = batch['t']
+                    valid_masks.append(h_mask)
+                    valid_targets.append(h_targets)
+                    valid_outs.append(h_out)
                     sum += i
                 valid_outs = np.concatenate(valid_outs, axis=0)[:sum]
                 valid_targets = np.concatenate(valid_targets, axis=0)[:sum]
