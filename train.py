@@ -14,10 +14,11 @@ import os
 import time
 import utils
 
-if len(sys.argv) != 2:
-    sys.exit("Usage: python train.py <config_name>")
+if len(sys.argv) != 3:
+    sys.exit("Usage: python train.py <config_name> <crf on/off>")
 
 config_name = sys.argv[1]
+crf_on = bool(int(sys.argv[2]))
 
 config = importlib.import_module("configurations.%s" % config_name)
 print("Using configurations: '%s'" % config_name)
@@ -37,10 +38,10 @@ SAVER_PATH = {
     'test': 'test/'
 }
 
-local_path = os.path.join(SAVER_PATH['base'], config_name)
+local_path = os.path.join(SAVER_PATH['base'], config_name + "-%d" % int(crf_on))
 summary_path = os.path.join(local_path, SAVER_PATH['log'])
 
-X_input, X_length, t_input, t_input_hot, t_mask, is_training_pl, prediction, loss, accuracy, train_op, global_step = config.model()
+X_input, X_length, t_input, t_input_hot, t_mask, is_training_pl, prediction, loss, accuracy, train_op, global_step = config.model(crf_on)
 print("Model loaded")
 
 if config.save_freq:
