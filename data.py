@@ -106,14 +106,13 @@ def get_test(seq_len=None):
   labels_test = labels_new
 
   ### ADDING BATCH PADDING ###
-
-  X_add = np.zeros((126,seqlen,d))
-  label_add = np.zeros((126,seqlen))
-  mask_add = np.zeros((126,seqlen))
-
-  X_test = np.concatenate((X_test,X_add), axis=0).astype("float32")
-  labels_test = np.concatenate((labels_test, label_add), axis=0).astype('int32')
-  mask_test = np.concatenate((mask_test, mask_add), axis=0).astype("float32")
+  #X_add = np.zeros((126,seqlen,d))
+  #label_add = np.zeros((126,seqlen))
+  #mask_add = np.zeros((126,seqlen))
+  #
+  #X_test = np.concatenate((X_test,X_add), axis=0).astype("float32")
+  #labels_test = np.concatenate((labels_test, label_add), axis=0).astype('int32')
+  #mask_test = np.concatenate((mask_test, mask_add), axis=0).astype("float32")
   if seq_len is not None:
     X_test = X_test[:, :seq_len]
     labels_test = labels_test[:, :seq_len]
@@ -176,11 +175,16 @@ class gen_data():
         batch_holder["length"] = np.zeros((self._batch_size,), dtype="int32")
         return batch_holder
 
-    def _chop_batch(self, batch):
+    def _chop_batch(self, batch, i=None):
         X, t, mask = utils.chop_sequences(batch['X'], batch['t'], batch['mask'], batch['length'])
-        batch['X'] = X
-        batch['t'] = t
-        batch['mask'] = mask
+        if i is None:
+            batch['X'] = X
+            batch['t'] = t
+            batch['mask'] = mask
+        else:
+            batch['X'] = X[:i]
+            batch['t'] = t[:i]
+            batch['mask'] = mask[:i]
         return batch
 
     def gen_valid(self):
@@ -193,11 +197,11 @@ class gen_data():
             batch['length'][i] = self._data_dict['length_valid'][idx]
             i += 1
             if i >= self._batch_size:
-                yield self._chop_batch(batch), i
+                yield self._chop_batch(batch, i), i
                 batch = self._batch_init()
                 i = 0
         if i != 0:
-            yield batch, i
+            yield self._chop_batch(batch, i), i
 
     def gen_test(self):
         batch = self._batch_init()
@@ -209,11 +213,13 @@ class gen_data():
             batch['length'][i] = self._data_dict['length_test'][idx]
             i += 1
             if i >= self._batch_size:
-                yield self._chop_batch(batch), i
+                yield self._chop_batch(batch, i), i
                 batch = self._batch_init()
                 i = 0
         if i != 0:
-            yield batch, i
+            print(i)
+            print(self._chop_batch(batch, i)['X'].shape)
+            yield self._chop_batch(batch, i), i
 
     def gen_train(self):
         batch = self._batch_init()
