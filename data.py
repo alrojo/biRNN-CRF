@@ -106,18 +106,19 @@ def get_test(seq_len=None):
   labels_test = labels_new
 
   ### ADDING BATCH PADDING ###
-  #X_add = np.zeros((126,seqlen,d))
-  #label_add = np.zeros((126,seqlen))
-  #mask_add = np.zeros((126,seqlen))
+  X_add = np.zeros((126,seqlen,d))
+  label_add = np.zeros((126,seqlen))
+  mask_add = np.zeros((126,seqlen))
   #
-  #X_test = np.concatenate((X_test,X_add), axis=0).astype("float32")
-  #labels_test = np.concatenate((labels_test, label_add), axis=0).astype('int32')
-  #mask_test = np.concatenate((mask_test, mask_add), axis=0).astype("float32")
+  X_test = np.concatenate((X_test,X_add), axis=0).astype("float32")
+  labels_test = np.concatenate((labels_test, label_add), axis=0).astype('int32')
+  mask_test = np.concatenate((mask_test, mask_add), axis=0).astype("float32")
   if seq_len is not None:
     X_test = X_test[:, :seq_len]
     labels_test = labels_test[:, :seq_len]
     mask_test = mask_test[:, :seq_len]
   len_test = np.sum(mask_test, axis=1)
+  len_test[-126:] = np.ones((126,), dtype='int32')
   return X_test, mask_test, labels_test, num_seq_test, len_test
 
 def load_data():
