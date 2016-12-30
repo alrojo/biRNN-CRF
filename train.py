@@ -63,14 +63,14 @@ with tf.Session() as sess:
     if config.tb_log_freq and config_name:
         if not os.path.exists(summary_path) and config.tb_log_freq:
             os.makedirs(summary_path)
-        summary_writer = tf.train.SummaryWriter(summary_path, sess.graph)
+        summary_writer = tf.summary.FileWriter(summary_path, sess.graph)
     if latest_checkpoint:
         checkpoint_saver.restore(sess, latest_checkpoint)
     else:
-        sess.run(tf.initialize_all_variables())
+        sess.run(tf.global_variables_initializer())
 
     # prepare summary operations and summary writer
-    summaries = tf.merge_all_summaries()
+    summaries = tf.summary.merge_all()
     val_summaries, valid_accs_pl = config.setup_validation_summary()
 
     combined_time = 0.0
