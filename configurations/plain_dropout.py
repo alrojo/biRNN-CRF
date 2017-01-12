@@ -107,7 +107,7 @@ def setup_validation_summary():
     valid_summaries = [
         tf.summary.scalar('validation/acc', acc),
     ]
-    return tf.merge_summary(valid_summaries), acc
+    return tf.summary.merge(valid_summaries), acc
 
 if __name__ == '__main__':
     model = model()
