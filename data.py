@@ -2,6 +2,7 @@ import numpy as np
 import os.path
 import subprocess
 
+import casphandle
 import utils
 
 TRAIN_PATH = 'data/cullpdb+profile_6133_filtered.npy.gz'
@@ -121,23 +122,55 @@ def get_test(seq_len=None):
   len_test[-126:] = np.ones((126,), dtype='int32')
   return X_test, mask_test, labels_test, num_seq_test, len_test
 
+def get_casp(seq_len=None):
+  X_casp, t_casp, mask_casp = casphandle.get_data()
+
+  # getting meta
+  seqlen = np.size(X_casp,1)
+  d = np.size(X_casp,2)
+  num_classes = 8
+
+  ### ADDING BATCH PADDING ###
+  num_add = 256 - X_casp.shape[0]
+  X_add = np.zeros((num_add,seqlen,d))
+  t_add = np.zeros((num_add,seqlen))
+  mask_add = np.zeros((num_add,seqlen))
+  #
+  X_casp = np.concatenate((X_casp, X_add), axis=0).astype("float32")
+  t_casp = np.concatenate((t_casp, t_add), axis=0).astype('int32')
+  mask_casp = np.concatenate((mask_casp, mask_add), axis=0).astype("float32")
+  if seq_len is not None:
+    X_casp = X_casp[:, :seq_len]
+    t_casp = t_casp[:, :seq_len]
+    mask_casp = mask_casp[:, :seq_len]
+  len_casp = np.sum(mask_casp, axis=1)
+  len_casp[-num_add:] = np.ones((num_add,), dtype='int32')
+  return X_casp, mask_casp, t_casp, len_casp
+
+
 def load_data():
   X_train, X_valid, t_train, t_valid, mask_train, \
     mask_valid, len_train, len_valid, num_seq_train = get_train()
   X_test, mask_test, t_test, num_seq_test, len_test = get_test()
+  X_casp, mask_casp, t_casp, len_casp = get_casp()
+
   dict_out = dict()
   dict_out['X_train'] = X_train
   dict_out['X_valid'] = X_valid
   dict_out['X_test'] = X_test
+  dict_out['X_casp'] = X_casp
   dict_out['t_train'] = t_train
   dict_out['t_valid'] = t_valid
   dict_out['t_test'] = t_test
+  dict_out['t_casp'] = t_casp
   dict_out['mask_train'] = mask_train
   dict_out['mask_valid'] = mask_valid
   dict_out['mask_test'] = mask_test
+  dict_out['mask_casp'] = mask_casp
   dict_out['length_train'] = len_train
   dict_out['length_valid'] = len_valid
   dict_out['length_test'] = len_test
+  dict_out['length_casp'] = len_casp
   return dict_out
 
 
@@ -162,8 +195,10 @@ class gen_data():
             if 't_test' in self._data_dict.keys():
                 print("Test is found!")
                 self._idcs_test = list(range(self._data_dict['X_test'].shape[0]))
-
-
+        if 'X_casp' in self._data_dict.keys():
+            if 't_casp' in self._data_dict.keys():
+                print("CASP is found!")
+                self._idcs_casp = list(range(self._data_dict['X_casp'].shape[0]))
 
     def _shuffle_train(self):
         np.random.shuffle(self._idcs_train)
@@ -212,6 +247,24 @@ class gen_data():
             batch['t'][i] = self._data_dict['t_test'][idx]
             batch['mask'][i] = self._data_dict['mask_test'][idx]
             batch['length'][i] = self._data_dict['length_test'][idx]
+            i += 1
+            if i >= self._batch_size:
+                yield self._chop_batch(batch, i), i
+                batch = self._batch_init()
+                i = 0
+        if i != 0:
+            print(i)
+            print(self._chop_batch(batch, i)['X'].shape)
+            yield self._chop_batch(batch, i), i
+
+    def gen_casp(self):
+        batch = self._batch_init()
+        i = 0
+        for idx in self._idcs_casp:
+            batch['X'][i] = self._data_dict['X_casp'][idx]
+            batch['t'][i] = self._data_dict['t_casp'][idx]
+            batch['mask'][i] = self._data_dict['mask_casp'][idx]
+            batch['length'][i] = self._data_dict['length_casp'][idx]
             i += 1
             if i >= self._batch_size:
                 yield self._chop_batch(batch, i), i
