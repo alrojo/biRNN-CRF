@@ -44,12 +44,12 @@ def model(crf_on):
         is_training_pl = tf.placeholder(tf.bool, name='is_training')
         # model
         l1 = fully_connected(X_input, num_units_l1)
-        l1 = tf.concat(2, [X_input, l1])
+        l1 = tf.concat(axis=2, values=[X_input, l1])
         cell_fw = tf.nn.rnn_cell.GRUCell(num_units_encoder)
         cell_bw = tf.nn.rnn_cell.GRUCell(num_units_encoder)
         enc_outputs, _ = tf.nn.bidirectional_dynamic_rnn(cell_fw=cell_fw, cell_bw=cell_bw, inputs=l1,
                                                          sequence_length=X_length, dtype=tf.float32)
-        enc_outputs = tf.concat(2, enc_outputs)
+        enc_outputs = tf.concat(axis=2, values=enc_outputs)
         with tf.variable_scope('l2'):
             l2 = fully_connected(enc_outputs, num_units_l2)
         with tf.variable_scope('f'):
@@ -69,7 +69,7 @@ def model(crf_on):
         else:
             print("CRF OFF!")
             prediction = f
-        tf.contrib.layers.summarize_variables()
+        tf.contrib.layers.summaries.summarize_variables()
 
     with tf.variable_scope('metrics'):
         print("building metrics ...")
@@ -106,7 +106,7 @@ def setup_validation_summary():
     valid_summaries = [
         tf.summary.scalar('validation/acc', acc),
     ]
-    return tf.merge_summary(valid_summaries), acc
+    return tf.summary.merge(valid_summaries), acc
 
 if __name__ == '__main__':
     model = model()
