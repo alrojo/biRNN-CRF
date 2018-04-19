@@ -59,7 +59,9 @@ data_gen = config.data_gen
 train_losses = []
 train_accs = []
 
-with tf.Session() as sess:
+gpu_opts = tf.GPUOptions(per_process_gpu_memory_fraction=0.9) 
+
+with tf.Session(config=tf.ConfigProto(gpu_options=gpu_opts)) as sess:
     if config.tb_log_freq and config_name:
         if not os.path.exists(summary_path) and config.tb_log_freq:
             os.makedirs(summary_path)
