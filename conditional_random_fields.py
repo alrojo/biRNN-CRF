@@ -116,10 +116,12 @@ def backward_pass(f, g, sequence_length=None, time_major=False, name=None):
             def zero_state():
                 return nu_state
             def normal():
-                return backward_step(nu_state,
+                back = backward_step(nu_state,
                                      f_ta.read(time-tf.constant(1)),
                                      g_ta.read(time-tf.constant(1)),
                                      axis=1)
+                back.set_shape(nu_state.get_shape())
+                return back
 
             new_nu_state = tf.cond(
                 tf.greater(time, 0),
