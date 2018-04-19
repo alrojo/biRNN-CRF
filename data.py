@@ -40,7 +40,7 @@ def get_train(seq_len=None):
   # Dummy -> concat
   vals = np.arange(0,8)
   labels_new = np.zeros((num_seqs,seqlen))
-  for i in xrange(np.size(labels,axis=0)):
+  for i in range(np.size(labels,axis=0)):
     labels_new[i,:] = np.dot(labels[i,:,:], vals)
   labels_new = labels_new.astype('int32')
   labels = labels_new
@@ -101,7 +101,7 @@ def get_test(seq_len=None):
   ## DUMMY -> CONCAT ##
   vals = np.arange(0,8)
   labels_new = np.zeros((num_seq_test,seqlen))
-  for i in xrange(np.size(labels_test,axis=0)):
+  for i in range(np.size(labels_test,axis=0)):
     labels_new[i,:] = np.dot(labels_test[i,:,:], vals)
   labels_new = labels_new.astype('int32')
   labels_test = labels_new

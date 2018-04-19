@@ -107,7 +107,7 @@ for idx, file_name in enumerate(file_names):
     X_part = np.zeros((700, 42))
     t_part = np.zeros((700,))
     mask_part = np.zeros((700,))
-    for key, values in my_dict.iteritems():
+    for key, values in my_dict.items():
         _, ss, aa, pssm = values
         X_sample = np.concatenate([aa, pssm])
         X_part[key] = X_sample
