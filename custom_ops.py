@@ -29,7 +29,7 @@ def sequence_loss(logits, targets, weights,
     targets = array_ops.reshape(targets, [-1])
     if softmax_loss_function is None:
       crossent = nn_ops.sparse_softmax_cross_entropy_with_logits(
-        probs_flat, targets)
+        logits=probs_flat, labels=targets)
     else:
       crossent = softmax_loss_function(probs_flat, targets)
       crossent = crossent * tf.reshape(weights, [-1])

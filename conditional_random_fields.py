@@ -31,8 +31,8 @@ def forward_pass(f, g, sequence_length=None, time_major=False, name=None):
         g_seq_len = array_ops.shape(g)[0]
         f_ta = ta_ops.TensorArray(tf.float32, size=f_seq_len, name="f_ta")
         g_ta = ta_ops.TensorArray(tf.float32, size=g_seq_len, name="g_ta")
-        f_ta = f_ta.unpack(f)
-        g_ta = g_ta.unpack(g)
+        f_ta = f_ta.unstack(f)
+        g_ta = g_ta.unstack(g)
 
 
         max_sequence_length = tf.reduce_max(sequence_length)
@@ -57,7 +57,7 @@ def forward_pass(f, g, sequence_length=None, time_major=False, name=None):
                 return new_nu_state
 
             def updatesome():
-                return tf.select(tf.less(time, sequence_length),
+                return tf.where(tf.less(time, sequence_length),
                                  new_nu_state,
                                  tf.zeros(tf.shape(new_nu_state),
                                           dtype=tf.float32))
@@ -73,7 +73,7 @@ def forward_pass(f, g, sequence_length=None, time_major=False, name=None):
 
         time, state, nu_ta = tf.while_loop(forward_cond, forward_body,
                                            loop_vars)
-        nu = nu_ta.pack()
+        nu = nu_ta.stack()
 
         if not time_major:
             nu = tf.transpose(nu, perm=[1, 0, 2])
@@ -103,8 +103,8 @@ def backward_pass(f, g, sequence_length=None, time_major=False, name=None):
         g_seq_len = array_ops.shape(g)[0]
         f_ta = ta_ops.TensorArray(tf.float32, size=f_seq_len, name="f_ta")
         g_ta = ta_ops.TensorArray(tf.float32, size=g_seq_len, name="g_ta")
-        f_ta = f_ta.unpack(f)
-        g_ta = g_ta.unpack(g)
+        f_ta = f_ta.unstack(f)
+        g_ta = g_ta.unstack(g)
         max_sequence_length = tf.reduce_max(sequence_length)
         min_sequence_length = tf.reduce_min(sequence_length)
         nu_ta = ta_ops.TensorArray(tf.float32, size=max_sequence_length, name="nu_ta")
@@ -116,10 +116,12 @@ def backward_pass(f, g, sequence_length=None, time_major=False, name=None):
             def zero_state():
                 return nu_state
             def normal():
-                return backward_step(nu_state,
+                back = backward_step(nu_state,
                                      f_ta.read(time-tf.constant(1)),
                                      g_ta.read(time-tf.constant(1)),
                                      axis=1)
+                back.set_shape(nu_state.get_shape())
+                return back
 
             new_nu_state = tf.cond(
                 tf.greater(time, 0),
@@ -129,10 +131,9 @@ def backward_pass(f, g, sequence_length=None, time_major=False, name=None):
             def updateall():
                 return new_nu_state
             def updatesome():
-                return tf.select(tf.less(time, sequence_length),
-                                 new_nu_state,
-                                 tf.zeros(tf.shape(new_nu_state),
-                                          dtype=tf.float32))
+                return tf.where(tf.less(time, sequence_length),
+                                new_nu_state,
+                                tf.zeros_like(new_nu_state, dtype=tf.float32))
 
             proposed_state = tf.cond(tf.less(time, min_sequence_length),
                                      updateall, updatesome)
@@ -145,7 +146,7 @@ def backward_pass(f, g, sequence_length=None, time_major=False, name=None):
 
         time, state, nu_ta = tf.while_loop(backward_cond, backward_body,
                                            loop_vars)
-        nu = nu_ta.pack()
+        nu = nu_ta.stack()
 
         if not time_major:
             nu = tf.transpose(nu, perm=[1, 0, 2])
@@ -242,8 +243,8 @@ def viterbi(f, g, time_major=False, name=None):
                                   name="f_ta")
         g_ta = ta_ops.TensorArray(tf.float32, size=g_sequence_length,
                                   name="g_ta")
-        f_ta = f_ta.unpack(f)
-        g_ta = g_ta.unpack(g)
+        f_ta = f_ta.unstack(f)
+        g_ta = g_ta.unstack(g)
         nu_ta = ta_ops.TensorArray(tf.float32, size=f_sequence_length,
                                    name="nu_ta")
         nu_label_ta = ta_ops.TensorArray(tf.int32, size=f_sequence_length,
@@ -317,7 +318,7 @@ def viterbi(f, g, time_major=False, name=None):
 
         time, state, viterbi_seq_ta = tf.while_loop(viterbi_cond,
             viterbi_body, loop_vars)
-        viterbi_seq = viterbi_seq_ta.pack()
+        viterbi_seq = viterbi_seq_ta.stack()
 
         if not time_major:
             viterbi_seq = tf.transpose(viterbi_seq, perm=[1, 0])
